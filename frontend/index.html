@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grade System — Login</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --grad1: #667eea;
+    --grad2: #764ba2;
+    --grad3: #f093fb;
+    --glass-bg: rgba(255,255,255,0.08);
+    --glass-border: rgba(255,255,255,0.18);
+    --glass-shadow: 0 8px 32px rgba(31,38,135,0.37);
+    --text: #fff;
+    --text-muted: rgba(255,255,255,0.65);
+    --input-bg: rgba(255,255,255,0.1);
+    --input-border: rgba(255,255,255,0.25);
+    --btn-grad: linear-gradient(135deg, #667eea, #764ba2);
+    --error: #ff6b6b;
+    --success: #51cf66;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  }
+
+  /* ── Particle canvas ─────────────────────────────── */
+  #particles { position: fixed; inset: 0; z-index: 0; }
+
+  /* ── Blurred orbs ────────────────────────────────── */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+    animation: float 8s ease-in-out infinite;
+    z-index: 0;
+  }
+  .orb1 { width: 500px; height: 500px; background: var(--grad1); top: -150px; left: -150px; animation-delay: 0s; }
+  .orb2 { width: 400px; height: 400px; background: var(--grad3); bottom: -100px; right: -100px; animation-delay: -3s; }
+  .orb3 { width: 300px; height: 300px; background: var(--grad2); top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: -6s; }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-30px) scale(1.05); }
+  }
+
+  /* ── Login card ──────────────────────────────────── */
+  .card {
+    position: relative;
+    z-index: 10;
+    width: 420px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 48px 40px;
+    box-shadow: var(--glass-shadow);
+    animation: slideUp 0.7s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(40px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+
+  /* ── Header ──────────────────────────────────────── */
+  .logo {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--grad1), var(--grad3));
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 20px;
+    box-shadow: 0 4px 20px rgba(102,126,234,0.5);
+    animation: pulse-logo 3s ease-in-out infinite;
+  }
+  @keyframes pulse-logo {
+    0%,100% { box-shadow: 0 4px 20px rgba(102,126,234,0.5); }
+    50% { box-shadow: 0 4px 40px rgba(240,147,251,0.7); }
+  }
+
+  .institute { font-size: 11px; color: var(--text-muted); text-align: center; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  .title { font-size: 24px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 32px; }
+
+  /* ── Role toggle ─────────────────────────────────── */
+  .role-toggle {
+    display: flex;
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 28px;
+    border: 1px solid var(--glass-border);
+  }
+  .role-btn {
+    flex: 1; padding: 10px; border: none; background: transparent;
+    color: var(--text-muted); border-radius: 9px; cursor: pointer;
+    font-size: 14px; font-weight: 500; transition: all 0.3s ease;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .role-btn.active {
+    background: linear-gradient(135deg, var(--grad1), var(--grad2));
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+  }
+
+  /* ── Inputs ──────────────────────────────────────── */
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  .input-wrap { position: relative; }
+  .input-wrap .icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    font-size: 18px; opacity: 0.5; pointer-events: none;
+  }
+  .field input {
+    width: 100%; padding: 14px 16px 14px 44px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 12px; color: #fff; font-size: 15px;
+    outline: none; transition: all 0.3s ease;
+  }
+  .field input::placeholder { color: rgba(255,255,255,0.3); }
+  .field input:focus {
+    border-color: var(--grad1);
+    background: rgba(255,255,255,0.14);
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+  }
+
+  /* ── Submit button ───────────────────────────────── */
+  .btn-login {
+    width: 100%; padding: 15px;
+    background: var(--btn-grad);
+    border: none; border-radius: 12px;
+    color: #fff; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: all 0.3s ease;
+    position: relative; overflow: hidden;
+    margin-top: 8px;
+    box-shadow: 0 4px 20px rgba(102,126,234,0.4);
+  }
+  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(102,126,234,0.6); }
+  .btn-login:active { transform: translateY(0); }
+  .btn-login.loading { pointer-events: none; }
+  .btn-login .spinner {
+    display: none; width: 20px; height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+  .btn-login.loading .btn-text { display: none; }
+  .btn-login.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Messages ────────────────────────────────────── */
+  .message {
+    padding: 12px 16px; border-radius: 10px;
+    font-size: 13px; margin-top: 16px;
+    display: none; align-items: center; gap: 8px;
+  }
+  .message.error { background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3); color: #ff6b6b; display: flex; }
+  .message.success { background: rgba(81,207,102,0.15); border: 1px solid rgba(81,207,102,0.3); color: #51cf66; display: flex; }
+
+  /* ── Divider ─────────────────────────────────────── */
+  .divider { text-align: center; color: var(--text-muted); font-size: 12px; margin: 20px 0 0; }
+
+  /* ── Shimmer on card border ──────────────────────── */
+  .card::before {
+    content: '';
+    position: absolute; inset: -1px;
+    border-radius: 25px;
+    background: linear-gradient(135deg, rgba(102,126,234,0.5), rgba(240,147,251,0.2), rgba(118,75,162,0.5));
+    z-index: -1;
+    animation: shimmer 4s linear infinite;
+    background-size: 300% 300%;
+  }
+  @keyframes shimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="card">
+  <div class="logo">🎓</div>
+  <p class="institute">Lloyd Institute of Engineering & Technology</p>
+  <h1 class="title">Grade System</h1>
+  <p class="subtitle">ML & Agentic AI Summer Training</p>
+
+  <div class="role-toggle">
+    <button class="role-btn active" id="btn-admin" onclick="setRole('admin')">
+      🛡️ Admin
+    </button>
+    <button class="role-btn" id="btn-student" onclick="setRole('student')">
+      🎓 Student
+    </button>
+  </div>
+
+  <form id="loginForm" onsubmit="handleLogin(event)">
+    <div class="field" id="field-password">
+      <label>Admin Password</label>
+      <div class="input-wrap">
+        <span class="icon">🔑</span>
+        <input type="password" id="input-password" placeholder="Enter admin password" autocomplete="current-password">
+      </div>
+    </div>
+
+    <div class="field" id="field-email" style="display:none">
+      <label>Your Email</label>
+      <div class="input-wrap">
+        <span class="icon">✉️</span>
+        <input type="email" id="input-email" placeholder="yourname@liet.in" autocomplete="email">
+      </div>
+    </div>
+
+    <button type="submit" class="btn-login" id="loginBtn">
+      <span class="btn-text">Sign In</span>
+      <div class="spinner"></div>
+    </button>
+  </form>
+
+  <div class="message" id="msg"></div>
+  <p class="divider">Automated Training Performance Management System</p>
+</div>
+
+<script>
+const API = 'http://localhost:5000/api';
+let currentRole = 'admin';
+
+function setRole(role) {
+  currentRole = role;
+  document.getElementById('btn-admin').classList.toggle('active', role === 'admin');
+  document.getElementById('btn-student').classList.toggle('active', role === 'student');
+  document.getElementById('field-password').style.display = role === 'admin' ? 'block' : 'none';
+  document.getElementById('field-email').style.display = role === 'student' ? 'block' : 'none';
+  hideMsg();
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = (type === 'error' ? '⚠ ' : '✓ ') + text;
+  el.className = 'message ' + type;
+}
+function hideMsg() { document.getElementById('msg').className = 'message'; }
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.classList.add('loading');
+  hideMsg();
+
+  const body = currentRole === 'admin'
+    ? { role: 'admin', password: document.getElementById('input-password').value }
+    : { role: 'student', email: document.getElementById('input-email').value.trim() };
+
+  try {
+    const res = await fetch(`${API}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+
+    if (!res.ok) { showMsg(data.error || 'Login failed', 'error'); return; }
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role);
+    localStorage.setItem('email', data.email || '');
+    localStorage.setItem('name', data.name || 'Admin');
+
+    showMsg('Login successful! Redirecting...', 'success');
+    setTimeout(() => {
+      window.location.href = data.role === 'admin' ? 'admin.html' : 'student.html';
+    }, 800);
+  } catch {
+    showMsg('Cannot reach server. Make sure api.py is running.', 'error');
+  } finally {
+    btn.classList.remove('loading');
+  }
+}
+
+/* ── Particle system ───────────────────────────────────────────────── */
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+window.addEventListener('resize', resize);
+resize();
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.r = Math.random() * 2 + 0.5;
+    this.vx = (Math.random() - 0.5) * 0.4;
+    this.vy = (Math.random() - 0.5) * 0.4;
+    this.alpha = Math.random() * 0.5 + 0.1;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+function drawLines() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 100) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(255,255,255,${0.08 * (1 - d/100)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  drawLines();
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Grade Card — Grade System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --grad1:#667eea;--grad2:#764ba2;--grad3:#f093fb;
+    --glass:rgba(255,255,255,0.07);--glass-border:rgba(255,255,255,0.15);
+    --text:#fff;--text-muted:rgba(255,255,255,0.6);--card-radius:20px;
+  }
+  body{min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);overflow-x:hidden}
+  .orb{position:fixed;border-radius:50%;filter:blur(100px);opacity:.2;z-index:0;pointer-events:none}
+  .orb1{width:500px;height:500px;background:var(--grad1);top:-150px;left:-150px}
+  .orb2{width:400px;height:400px;background:var(--grad3);bottom:-100px;right:-100px}
+
+  nav{position:sticky;top:0;z-index:100;background:rgba(15,12,41,.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--glass-border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px}
+  .nav-brand{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--grad1),var(--grad3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .btn-logout{background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:#ff6b6b;padding:8px 18px;border-radius:10px;cursor:pointer;font-size:13px;transition:all .2s}
+
+  main{position:relative;z-index:10;padding:32px;max-width:900px;margin:0 auto}
+
+  /* hero card */
+  .hero{
+    background:var(--glass);backdrop-filter:blur(20px);
+    border:1px solid var(--glass-border);border-radius:24px;
+    padding:36px;margin-bottom:24px;
+    display:flex;align-items:center;gap:28px;
+    opacity:0;transform:translateY(24px);
+    transition:opacity .6s ease,transform .6s ease;
+    position:relative;overflow:hidden;
+  }
+  .hero.visible{opacity:1;transform:translateY(0)}
+  .hero::before{
+    content:'';position:absolute;inset:-1px;border-radius:25px;
+    background:linear-gradient(135deg,rgba(102,126,234,.4),rgba(240,147,251,.2),rgba(118,75,162,.4));
+    z-index:-1;background-size:300% 300%;
+    animation:shimmer 4s linear infinite;
+  }
+  @keyframes shimmer{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+
+  .avatar{
+    width:80px;height:80px;border-radius:20px;flex-shrink:0;
+    background:linear-gradient(135deg,var(--grad1),var(--grad3));
+    display:flex;align-items:center;justify-content:center;
+    font-size:32px;box-shadow:0 4px 20px rgba(102,126,234,.5);
+    animation:pulse-av 3s ease-in-out infinite;
+  }
+  @keyframes pulse-av{0%,100%{box-shadow:0 4px 20px rgba(102,126,234,.5)}50%{box-shadow:0 4px 40px rgba(240,147,251,.7)}}
+  .hero-info h1{font-size:26px;font-weight:700;margin-bottom:4px}
+  .hero-info p{font-size:13px;color:var(--text-muted);font-family:monospace}
+
+  .grade-badge-hero{
+    margin-left:auto;font-size:48px;font-weight:800;
+    background:linear-gradient(135deg,var(--grad1),var(--grad3));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    line-height:1;flex-shrink:0;
+  }
+
+  /* kpis */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+  .kpi-card{
+    background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:16px;
+    padding:20px;text-align:center;opacity:0;transform:translateY(20px);transition:opacity .5s,transform .5s;
+  }
+  .kpi-card.visible{opacity:1;transform:translateY(0)}
+  .kpi-icon{font-size:24px;margin-bottom:8px}
+  .kpi-value{font-size:28px;font-weight:700;background:linear-gradient(135deg,#fff,rgba(255,255,255,.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+  .kpi-label{font-size:11px;color:var(--text-muted);margin-top:6px;text-transform:uppercase;letter-spacing:.05em}
+
+  /* glass card */
+  .glass-card{background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:var(--card-radius);padding:24px;margin-bottom:20px;opacity:0;transform:translateY(20px);transition:opacity .6s,transform .6s}
+  .glass-card.visible{opacity:1;transform:translateY(0)}
+  .card-title{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px}
+
+  /* module table */
+  .mod-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+  .mod-row:last-child{border-bottom:none}
+  .mod-name{flex:1;font-size:14px}
+  .mod-marks{font-size:12px;color:var(--text-muted);font-family:monospace;min-width:60px;text-align:right}
+  .mod-pct{font-size:14px;font-weight:700;font-family:monospace;min-width:52px;text-align:right}
+  .mod-bar-wrap{width:120px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+  .mod-bar{height:100%;border-radius:3px;transition:width 1s cubic-bezier(.16,1,.3,1)}
+
+  /* download btn */
+  .btn-download{
+    width:100%;padding:16px;
+    background:linear-gradient(135deg,var(--grad1),var(--grad2));
+    border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:700;
+    cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:10px;
+    box-shadow:0 4px 20px rgba(102,126,234,.4);
+  }
+  .btn-download:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(102,126,234,.6)}
+
+  /* position indicator */
+  .position-bar{position:relative;height:10px;background:linear-gradient(90deg,#ff6b6b,#fac858,#51cf66);border-radius:5px;margin:14px 0}
+  .position-marker{position:absolute;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 0 12px rgba(255,255,255,.6);transition:left 1s cubic-bezier(.16,1,.3,1)}
+
+  .chart-wrap{height:220px;position:relative}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<nav>
+  <div class="nav-brand">🎓 Grade System</div>
+  <button class="btn-logout" onclick="logout()">Sign Out</button>
+</nav>
+
+<main id="main" style="display:none">
+
+  <!-- hero -->
+  <div class="hero" id="hero">
+    <div class="avatar" id="avatar">🎓</div>
+    <div class="hero-info">
+      <h1 id="student-name">—</h1>
+      <p id="student-email">—</p>
+    </div>
+    <div class="grade-badge-hero" id="grade-badge">—</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card" id="kpi-0"><div class="kpi-icon">📊</div><div class="kpi-value" id="kv-avg">—</div><div class="kpi-label">Your Average</div></div>
+    <div class="kpi-card" id="kpi-1"><div class="kpi-icon">🏆</div><div class="kpi-value" id="kv-rank">—</div><div class="kpi-label">Your Rank</div></div>
+    <div class="kpi-card" id="kpi-2"><div class="kpi-icon">📈</div><div class="kpi-value" id="kv-pct">—</div><div class="kpi-label">Percentile</div></div>
+    <div class="kpi-card" id="kpi-3"><div class="kpi-icon">📝</div><div class="kpi-value" id="kv-quizzes">—</div><div class="kpi-label">Quizzes Done</div></div>
+  </div>
+
+  <!-- Cohort position -->
+  <div class="glass-card" id="card-pos">
+    <div class="card-title">Your position in the cohort</div>
+    <div class="position-bar">
+      <div class="position-marker" id="pos-marker" style="left:0%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:6px">
+      <span>0% — Bottom</span><span>50% — Median</span><span>100% — Top</span>
+    </div>
+    <p id="pos-text" style="font-size:13px;color:var(--text-muted);margin-top:14px"></p>
+  </div>
+
+  <!-- Module breakdown -->
+  <div class="glass-card" id="card-modules">
+    <div class="card-title">Module-wise Performance</div>
+    <div id="mod-rows"></div>
+  </div>
+
+  <!-- Module chart -->
+  <div class="glass-card" id="card-chart">
+    <div class="card-title">Score Comparison by Module</div>
+    <div class="chart-wrap"><canvas id="modChart"></canvas></div>
+  </div>
+
+  <!-- Download -->
+  <div class="glass-card" id="card-download">
+    <div class="card-title">Grade Card PDF</div>
+    <button class="btn-download" onclick="downloadPDF()">
+      ⬇️ Download My Grade Card
+    </button>
+  </div>
+
+</main>
+
+<div id="loading" style="display:flex;align-items:center;justify-content:center;min-height:60vh;font-size:18px;color:var(--text-muted)">Loading your grade card...</div>
+
+<script>
+const API = 'http://localhost:5000/api';
+const params = new URLSearchParams(location.search);
+const isAdmin = params.get('admin') === '1';
+const paramEmail = params.get('email');
+
+const token = localStorage.getItem('token');
+const role = localStorage.getItem('role');
+const myEmail = paramEmail || localStorage.getItem('email');
+
+if (!token) { window.location.href = 'index.html'; }
+if (!isAdmin && role !== 'admin' && role !== 'student') { window.location.href = 'index.html'; }
+
+const headers = { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` };
+
+function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+function countUp(el, target, suffix='', duration=1000) {
+  const start = Date.now();
+  const isFloat = !Number.isInteger(target);
+  function tick() {
+    const p = Math.min((Date.now()-start)/duration,1);
+    const ease = 1-Math.pow(1-p,3);
+    el.textContent = (isFloat?(target*ease).toFixed(1):Math.round(target*ease)) + suffix;
+    if(p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function gradeColor(pct) {
+  if(pct>=85) return '#51cf66';
+  if(pct>=70) return '#667eea';
+  if(pct>=55) return '#fac858';
+  if(pct>=40) return '#fa9658';
+  return '#ff6b6b';
+}
+
+async function loadStudent() {
+  try {
+    const res = await fetch(`${API}/student/${encodeURIComponent(myEmail)}`, { headers });
+    if(res.status===401){window.location.href='index.html';return}
+    if(res.status===403){document.getElementById('loading').textContent='Access denied.';return}
+    const data = await res.json();
+    render(data);
+  } catch(e) {
+    document.getElementById('loading').textContent = 'Cannot reach server. Make sure api.py is running.';
+  }
+}
+
+function render({student, modules}) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+
+  // hero
+  const initials = student.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('avatar').textContent = initials;
+  document.getElementById('student-name').textContent = student.name;
+  document.getElementById('student-email').textContent = student.email;
+  document.getElementById('grade-badge').textContent = student.grade;
+
+  // animate hero in
+  setTimeout(() => document.getElementById('hero').classList.add('visible'), 100);
+
+  // KPI cards
+  ['kpi-0','kpi-1','kpi-2','kpi-3'].forEach((id,i) => {
+    setTimeout(() => document.getElementById(id).classList.add('visible'), 200+i*100);
+  });
+  setTimeout(() => {
+    countUp(document.getElementById('kv-avg'), parseFloat(student.avg_percentage), '%');
+    countUp(document.getElementById('kv-rank'), student.rank);
+    countUp(document.getElementById('kv-pct'), parseFloat(student.final_percentile));
+    countUp(document.getElementById('kv-quizzes'), student.quizzes_attempted);
+  }, 300);
+
+  // cohort position
+  const pctile = parseFloat(student.final_percentile);
+  setTimeout(() => {
+    document.getElementById('card-pos').classList.add('visible');
+    setTimeout(() => {
+      document.getElementById('pos-marker').style.left = pctile + '%';
+    }, 200);
+    document.getElementById('pos-text').textContent =
+      `You scored better than ${pctile.toFixed(1)}% of your cohort.`;
+  }, 500);
+
+  // modules
+  setTimeout(() => {
+    document.getElementById('card-modules').classList.add('visible');
+    const rows = modules.map(m => {
+      const color = gradeColor(m.module_percentage);
+      return `<div class="mod-row">
+        <div class="mod-name">${m.module}</div>
+        <div class="mod-marks">${m.marks_scored}/${m.marks_possible}</div>
+        <div class="mod-bar-wrap"><div class="mod-bar" data-pct="${m.module_percentage}" style="width:0%;background:${color}"></div></div>
+        <div class="mod-pct" style="color:${color}">${m.module_percentage}%</div>
+      </div>`;
+    }).join('');
+    document.getElementById('mod-rows').innerHTML = rows;
+    setTimeout(() => {
+      document.querySelectorAll('.mod-bar').forEach(bar => {
+        bar.style.width = bar.dataset.pct + '%';
+      });
+    }, 200);
+  }, 600);
+
+  // module chart
+  setTimeout(() => {
+    document.getElementById('card-chart').classList.add('visible');
+    new Chart(document.getElementById('modChart'), {
+      type: 'radar',
+      data: {
+        labels: modules.map(m=>m.module),
+        datasets: [{
+          label: 'Your Score %',
+          data: modules.map(m=>m.module_percentage),
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102,126,234,0.15)',
+          borderWidth: 2,
+          pointBackgroundColor: '#667eea',
+          pointRadius: 5
+        }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#ffffff99'}}},
+        scales:{r:{grid:{color:'rgba(255,255,255,0.08)'},pointLabels:{color:'#ffffff99',font:{size:12}},ticks:{color:'rgba(0,0,0,0)'},min:0,max:100}},
+        animation:{duration:1000,easing:'easeOutQuart'}
+      }
+    });
+  }, 700);
+
+  // download card
+  setTimeout(() => document.getElementById('card-download').classList.add('visible'), 800);
+}
+
+async function downloadPDF() {
+  window.open(`${API}/grade-card/${encodeURIComponent(myEmail)}`, '_blank');
+}
+
+loadStudent();
+</script>
+</body>
+</html>

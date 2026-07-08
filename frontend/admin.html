@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — Grade System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --grad1:#667eea;--grad2:#764ba2;--grad3:#f093fb;
+    --glass:rgba(255,255,255,0.07);
+    --glass-border:rgba(255,255,255,0.15);
+    --text:#fff;--text-muted:rgba(255,255,255,0.6);
+    --card-radius:20px;
+  }
+
+  body{
+    min-height:100vh;font-family:'Segoe UI',system-ui,sans-serif;
+    background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+    color:var(--text);overflow-x:hidden;
+  }
+
+  /* orbs */
+  .orb{position:fixed;border-radius:50%;filter:blur(100px);opacity:0.2;z-index:0;pointer-events:none}
+  .orb1{width:600px;height:600px;background:var(--grad1);top:-200px;left:-200px}
+  .orb2{width:500px;height:500px;background:var(--grad3);bottom:-150px;right:-150px}
+
+  /* nav */
+  nav{
+    position:sticky;top:0;z-index:100;
+    background:rgba(15,12,41,0.8);backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--glass-border);
+    padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;
+  }
+  .nav-brand{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--grad1),var(--grad3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .nav-right{display:flex;align-items:center;gap:16px}
+  .nav-badge{background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;padding:6px 16px;font-size:13px;color:var(--text-muted)}
+  .btn-logout{background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.3);color:#ff6b6b;padding:8px 18px;border-radius:10px;cursor:pointer;font-size:13px;transition:all .2s}
+  .btn-logout:hover{background:rgba(255,107,107,0.25)}
+
+  /* layout */
+  main{position:relative;z-index:10;padding:32px;max-width:1280px;margin:0 auto}
+
+  /* page title */
+  .page-title{font-size:28px;font-weight:700;margin-bottom:6px}
+  .page-sub{color:var(--text-muted);font-size:14px;margin-bottom:32px}
+
+  /* glass card */
+  .glass-card{
+    background:var(--glass);backdrop-filter:blur(16px);
+    border:1px solid var(--glass-border);border-radius:var(--card-radius);
+    padding:24px;
+    opacity:0;transform:translateY(24px);
+    transition:opacity .6s ease,transform .6s ease;
+  }
+  .glass-card.visible{opacity:1;transform:translateY(0)}
+
+  /* kpi grid */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px}
+  .kpi-card{
+    background:var(--glass);backdrop-filter:blur(16px);
+    border:1px solid var(--glass-border);border-radius:16px;
+    padding:22px 20px;text-align:center;
+    opacity:0;transform:translateY(20px) scale(0.97);
+    transition:opacity .5s ease,transform .5s ease,box-shadow .2s;
+  }
+  .kpi-card.visible{opacity:1;transform:translateY(0) scale(1)}
+  .kpi-card:hover{box-shadow:0 8px 32px rgba(102,126,234,0.25);transform:translateY(-3px) scale(1)!important}
+  .kpi-icon{font-size:28px;margin-bottom:10px}
+  .kpi-value{
+    font-size:34px;font-weight:700;
+    background:linear-gradient(135deg,#fff,rgba(255,255,255,0.7));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    line-height:1;
+  }
+  .kpi-label{font-size:12px;color:var(--text-muted);margin-top:6px;letter-spacing:.05em;text-transform:uppercase}
+
+  /* charts row */
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px}
+  .chart-title{font-size:14px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px}
+  .chart-wrap{position:relative;height:260px}
+
+  /* action bar */
+  .action-bar{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap}
+  .btn{
+    padding:12px 22px;border-radius:12px;font-size:14px;font-weight:600;
+    cursor:pointer;border:none;transition:all .3s;display:flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:linear-gradient(135deg,var(--grad1),var(--grad2));color:#fff;box-shadow:0 4px 15px rgba(102,126,234,0.4)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(102,126,234,0.6)}
+  .btn-danger{background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.3);color:#ff6b6b}
+  .btn-danger:hover{background:rgba(255,107,107,0.25)}
+  .btn-ghost{background:var(--glass);border:1px solid var(--glass-border);color:var(--text)}
+  .btn-ghost:hover{background:rgba(255,255,255,0.12)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+
+  /* leaderboard */
+  .lb-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px}
+  .lb-item{
+    display:flex;align-items:center;gap:14px;padding:14px 16px;
+    background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;transition:all .2s;
+  }
+  .lb-item:hover{background:rgba(255,255,255,0.08);transform:translateX(4px)}
+  .lb-medal{font-size:22px;flex-shrink:0;width:32px;text-align:center}
+  .lb-rank{font-size:12px;color:var(--text-muted);font-family:monospace;width:28px}
+  .lb-name{flex:1;font-size:14px;font-weight:500}
+  .lb-pct{font-size:15px;font-weight:700;color:var(--grad1);font-family:monospace}
+  .grade-badge{
+    font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;flex-shrink:0;
+  }
+  .g-Ap{background:rgba(81,207,102,.2);color:#51cf66}
+  .g-A{background:rgba(102,126,234,.2);color:#667eea}
+  .g-B{background:rgba(250,200,88,.2);color:#fac858}
+  .g-C{background:rgba(250,150,88,.2);color:#fa9658}
+  .g-F{background:rgba(255,107,107,.2);color:#ff6b6b}
+
+  /* table */
+  .table-wrap{overflow-x:auto;border-radius:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{
+    padding:14px 16px;text-align:left;
+    background:rgba(102,126,234,0.15);
+    color:var(--text-muted);font-size:11px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.08em;
+    border-bottom:1px solid var(--glass-border);
+  }
+  tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background .15s}
+  tbody tr:hover{background:rgba(255,255,255,0.04)}
+  tbody td{padding:13px 16px;color:var(--text)}
+  .rank-cell{font-family:monospace;color:var(--text-muted)}
+
+  /* search */
+  .search-wrap{position:relative;margin-bottom:16px}
+  .search-wrap input{
+    width:100%;padding:12px 16px 12px 42px;
+    background:var(--glass);border:1px solid var(--glass-border);
+    border-radius:12px;color:#fff;font-size:14px;outline:none;transition:all .3s;
+  }
+  .search-wrap input:focus{border-color:var(--grad1);background:rgba(255,255,255,0.1)}
+  .search-wrap input::placeholder{color:rgba(255,255,255,0.3)}
+  .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:.5;font-size:16px}
+
+  /* toast */
+  .toast{
+    position:fixed;bottom:24px;right:24px;z-index:999;
+    background:rgba(30,20,60,0.95);backdrop-filter:blur(16px);
+    border:1px solid var(--glass-border);border-radius:14px;
+    padding:14px 20px;font-size:14px;
+    transform:translateY(80px);opacity:0;transition:all .4s cubic-bezier(.16,1,.3,1);
+    max-width:320px;
+  }
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast.success{border-color:rgba(81,207,102,.4);color:#51cf66}
+  .toast.error{border-color:rgba(255,107,107,.4);color:#ff6b6b}
+
+  /* section label */
+  .section-label{font-size:11px;font-weight:600;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--glass-border)}
+
+  @media(max-width:768px){.charts-row,.lb-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<nav>
+  <div class="nav-brand">🎓 Grade System</div>
+  <div class="nav-right">
+    <span class="nav-badge">🛡️ Admin</span>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<main>
+  <h1 class="page-title">Cohort Dashboard</h1>
+  <p class="page-sub" id="last-updated">ML & Agentic AI Summer Training — Lloyd Institute</p>
+
+  <!-- KPI strip -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card" id="kpi-0"><div class="kpi-icon">👥</div><div class="kpi-value" id="kv-total">—</div><div class="kpi-label">Total Students</div></div>
+    <div class="kpi-card" id="kpi-1"><div class="kpi-icon">📊</div><div class="kpi-value" id="kv-avg">—</div><div class="kpi-label">Cohort Average</div></div>
+    <div class="kpi-card" id="kpi-2"><div class="kpi-icon">🏆</div><div class="kpi-value" id="kv-top">—</div><div class="kpi-label">Top Score</div></div>
+    <div class="kpi-card" id="kpi-3"><div class="kpi-icon">⭐</div><div class="kpi-value" id="kv-ap">—</div><div class="kpi-label">A+ Students</div></div>
+    <div class="kpi-card" id="kpi-4"><div class="kpi-icon">⚠️</div><div class="kpi-value" id="kv-weak">—</div><div class="kpi-label">Need Support</div></div>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="runPipeline()" id="btn-pipeline">⚡ Run Pipeline</button>
+    <button class="btn btn-ghost" onclick="dryRunEmails()" id="btn-dry">📋 Preview Emails</button>
+    <button class="btn btn-danger" onclick="sendEmails()" id="btn-send">📧 Send Emails</button>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="glass-card">
+      <div class="chart-title">Grade Distribution</div>
+      <div class="chart-wrap"><canvas id="gradeChart"></canvas></div>
+    </div>
+    <div class="glass-card">
+      <div class="chart-title">Module Performance</div>
+      <div class="chart-wrap"><canvas id="moduleChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Leaderboard + weak students -->
+  <div class="lb-grid">
+    <div class="glass-card">
+      <div class="section-label">🏆 Top 10 Leaderboard</div>
+      <div id="leaderboard"></div>
+    </div>
+    <div class="glass-card">
+      <div class="section-label">⚠️ Needs Attention — Below 55%</div>
+      <div id="weak-list"></div>
+    </div>
+  </div>
+
+  <!-- Full table -->
+  <div class="glass-card">
+    <div class="section-label">All Students</div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Search by name or email..." oninput="filterTable(this.value)" id="search">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th><th>Name</th><th>Email</th>
+            <th>Quizzes</th><th>Average %</th><th>Percentile</th><th>Grade</th>
+          </tr>
+        </thead>
+        <tbody id="student-table"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:5000/api';
+const token = localStorage.getItem('token');
+const role = localStorage.getItem('role');
+if (!token || role !== 'admin') { window.location.href = 'index.html'; }
+
+const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+let allStudents = [];
+
+/* ── Auth ─────────────────────────────────────────── */
+function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+/* ── Toast ────────────────────────────────────────── */
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = (type==='success'?'✓ ':'⚠ ') + msg;
+  el.className = `toast show ${type}`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* ── Count-up animation ───────────────────────────── */
+function countUp(el, target, suffix='', duration=1200) {
+  const start = Date.now();
+  const isFloat = typeof target === 'number' && !Number.isInteger(target);
+  function tick() {
+    const p = Math.min((Date.now()-start)/duration, 1);
+    const ease = 1 - Math.pow(1-p, 3);
+    const val = isFloat ? (target*ease).toFixed(1) : Math.round(target*ease);
+    el.textContent = val + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ── Slide-in on scroll ───────────────────────────── */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach((e,i) => { if(e.isIntersecting) { setTimeout(()=>e.target.classList.add('visible'), i*80); } });
+}, { threshold: 0.1 });
+
+/* ── Load everything ──────────────────────────────── */
+async function loadDashboard() {
+  try {
+    const [statsRes, studentsRes, modulesRes] = await Promise.all([
+      fetch(`${API}/stats`, { headers }),
+      fetch(`${API}/students`, { headers }),
+      fetch(`${API}/modules`, { headers }),
+    ]);
+
+    if (statsRes.status === 401) { logout(); return; }
+
+    const stats = await statsRes.json();
+    const students = await studentsRes.json();
+    const modules = await modulesRes.json();
+
+    allStudents = students;
+
+    renderKPIs(stats);
+    renderCharts(stats, modules);
+    renderLeaderboard(students);
+    renderWeakStudents(students);
+    renderTable(students);
+
+    document.getElementById('last-updated').textContent =
+      `Last updated: ${new Date().toLocaleString()} — ${students.length} students`;
+  } catch(e) {
+    toast('Cannot reach API. Make sure api.py is running.', 'error');
+  }
+}
+
+/* ── KPIs ─────────────────────────────────────────── */
+function renderKPIs(stats) {
+  document.querySelectorAll('.kpi-card').forEach((card, i) => {
+    setTimeout(() => card.classList.add('visible'), i * 100);
+  });
+  setTimeout(() => {
+    countUp(document.getElementById('kv-total'), stats.total_students);
+    countUp(document.getElementById('kv-avg'), stats.cohort_average, '%');
+    countUp(document.getElementById('kv-top'), stats.top_score, '%');
+    countUp(document.getElementById('kv-ap'), stats.ap_count);
+    countUp(document.getElementById('kv-weak'), stats.students_needing_support);
+  }, 300);
+}
+
+/* ── Charts ───────────────────────────────────────── */
+function renderCharts(stats, modules) {
+  document.querySelectorAll('.glass-card').forEach(c => {
+    observer.observe(c);
+    setTimeout(() => c.classList.add('visible'), 400);
+  });
+
+  const gradeColors = { 'A+':'#51cf66','A':'#667eea','B':'#fac858','C':'#fa9658','F':'#ff6b6b' };
+  const gd = stats.grade_distribution;
+  const grades = ['A+','A','B','C','F'];
+
+  new Chart(document.getElementById('gradeChart'), {
+    type: 'bar',
+    data: {
+      labels: grades,
+      datasets: [{ data: grades.map(g=>gd[g]||0), backgroundColor: grades.map(g=>gradeColors[g]+'99'), borderColor: grades.map(g=>gradeColors[g]), borderWidth: 2, borderRadius: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#ffffff99', font:{size:14} } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#ffffff99' }, beginAtZero: true }
+      },
+      animation: { duration: 1000, easing: 'easeOutQuart' }
+    }
+  });
+
+  new Chart(document.getElementById('moduleChart'), {
+    type: 'doughnut',
+    data: {
+      labels: modules.map(m=>m.module),
+      datasets: [{ data: modules.map(m=>m.avg.toFixed(1)), backgroundColor: ['#667eea99','#f093fb99','#51cf6699','#fac85899'], borderColor: ['#667eea','#f093fb','#51cf66','#fac858'], borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#ffffff99', padding:16 } } },
+      animation: { animateRotate: true, duration: 1000 }
+    }
+  });
+}
+
+/* ── Leaderboard ──────────────────────────────────── */
+function renderLeaderboard(students) {
+  const medals = {1:'🥇',2:'🥈',3:'🥉'};
+  const html = students.slice(0,10).map(s => `
+    <div class="lb-item">
+      <div class="lb-medal">${medals[s.rank]||''}</div>
+      <div class="lb-rank">#${s.rank}</div>
+      <div class="lb-name">${s.name}</div>
+      <div class="lb-pct">${s.avg_percentage}%</div>
+      <div class="grade-badge g-${s.grade.replace('+','p')}">${s.grade}</div>
+    </div>`).join('');
+  document.getElementById('leaderboard').innerHTML = html;
+}
+
+/* ── Weak students ────────────────────────────────── */
+function renderWeakStudents(students) {
+  const weak = students.filter(s => s.avg_percentage < 55);
+  if (!weak.length) {
+    document.getElementById('weak-list').innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:12px 0">All students above 55% — great cohort! 🎉</p>';
+    return;
+  }
+  const html = weak.map(s => `
+    <div class="lb-item">
+      <div class="lb-rank">#${s.rank}</div>
+      <div class="lb-name">${s.name}</div>
+      <div class="lb-pct" style="color:#ff6b6b">${s.avg_percentage}%</div>
+      <div class="grade-badge g-${s.grade.replace('+','p')}">${s.grade}</div>
+    </div>`).join('');
+  document.getElementById('weak-list').innerHTML = html;
+}
+
+/* ── Table ────────────────────────────────────────── */
+function renderTable(students) {
+  const html = students.map(s => `
+    <tr onclick="viewStudent('${s.email}')" style="cursor:pointer">
+      <td class="rank-cell">#${s.rank}</td>
+      <td>${s.name}</td>
+      <td style="color:var(--text-muted);font-size:13px">${s.email}</td>
+      <td style="text-align:center">${s.quizzes_attempted}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px">
+            <div style="width:${s.avg_percentage}%;height:100%;border-radius:3px;background:linear-gradient(90deg,#667eea,#f093fb)"></div>
+          </div>
+          <span style="font-family:monospace;min-width:42px">${s.avg_percentage}%</span>
+        </div>
+      </td>
+      <td style="font-family:monospace">${s.final_percentile}</td>
+      <td><span class="grade-badge g-${s.grade.replace('+','p')}">${s.grade}</span></td>
+    </tr>`).join('');
+  document.getElementById('student-table').innerHTML = html;
+}
+
+function filterTable(query) {
+  const q = query.toLowerCase();
+  const filtered = allStudents.filter(s => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q));
+  renderTable(filtered);
+}
+
+function viewStudent(email) {
+  window.open(`student.html?email=${encodeURIComponent(email)}&admin=1`, '_blank');
+}
+
+/* ── Pipeline & email actions ─────────────────────── */
+async function runPipeline() {
+  const btn = document.getElementById('btn-pipeline');
+  btn.disabled = true; btn.textContent = '⏳ Running...';
+  try {
+    const res = await fetch(`${API}/run-pipeline`, { method:'POST', headers });
+    const data = await res.json();
+    if (data.success) {
+      toast(`Pipeline done! ${data.students_processed} students, ${data.grade_cards_generated} cards.`);
+      setTimeout(loadDashboard, 800);
+    } else { toast(data.error, 'error'); }
+  } catch { toast('Pipeline failed — check api.py logs.', 'error'); }
+  finally { btn.disabled=false; btn.textContent='⚡ Run Pipeline'; }
+}
+
+async function dryRunEmails() {
+  const btn = document.getElementById('btn-dry');
+  btn.disabled = true; btn.textContent = '⏳ Checking...';
+  try {
+    const res = await fetch(`${API}/send-emails`, { method:'POST', headers, body:JSON.stringify({dry_run:true}) });
+    const data = await res.json();
+    toast(`Dry run: ${data.dry_run_count} would be sent, ${data.skipped} skipped.`);
+  } catch { toast('Could not preview emails.', 'error'); }
+  finally { btn.disabled=false; btn.textContent='📋 Preview Emails'; }
+}
+
+async function sendEmails() {
+  if (!confirm('Send real emails to ALL students? This cannot be undone.')) return;
+  const btn = document.getElementById('btn-send');
+  btn.disabled=true; btn.textContent='⏳ Sending...';
+  try {
+    const res = await fetch(`${API}/send-emails`, { method:'POST', headers, body:JSON.stringify({dry_run:false}) });
+    const data = await res.json();
+    toast(`Emails sent: ${data.sent} sent, ${data.failed} failed, ${data.skipped} skipped.`);
+  } catch { toast('Email send failed.', 'error'); }
+  finally { btn.disabled=false; btn.textContent='📧 Send Emails'; }
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
